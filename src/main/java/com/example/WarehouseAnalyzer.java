@@ -158,7 +158,6 @@ class WarehouseAnalyzer {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         BigDecimal meanBD = sumBD.divide(nBD, mc);
-        double mean = meanBD.doubleValue();
 
         BigDecimal varianceSum = products.stream()
                 .map(p -> p.price().subtract(meanBD))
@@ -176,8 +175,11 @@ class WarehouseAnalyzer {
         BigDecimal lowerBound = meanBD.subtract(deviationRange);
         BigDecimal upperBound = meanBD.add(deviationRange);
 
+        BigDecimal tolerance = new BigDecimal("0.00000000001");
+
         return products.stream()
-                .filter(p -> p.price().compareTo(lowerBound) < 0 || p.price().compareTo(upperBound) > 0)
+                .filter(p -> p.price().compareTo(lowerBound.subtract(tolerance)) < 0 ||
+                        p.price().compareTo(upperBound.add(tolerance)) > 0)
                 .collect(Collectors.toList());
     }
     
