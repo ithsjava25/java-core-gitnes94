@@ -150,36 +150,27 @@ class WarehouseAnalyzer {
         int n = products.size();
         if (n <= 1) return List.of();
 
-        MathContext mc = new MathContext(20, RoundingMode.HALF_UP);
-        BigDecimal nBD = BigDecimal.valueOf(n);
+        double sum = products.stream().map(Product::price).mapToDouble(BigDecimal::doubleValue).sum();
+        double mean = sum / n;
 
-        BigDecimal sumBD = products.stream()
+        double variance = products.stream()
                 .map(Product::price)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal meanBD = sumBD.divide(nBD, mc);
+                .mapToDouble(bd -> Math.pow(bd.doubleValue() - mean, 2))
+                .sum() / n;
+        double std = Math.sqrt(variance);
+        double threshold = standardDeviations * std;
 
-        BigDecimal varianceSum = products.stream()
-                .map(p -> p.price().subtract(meanBD))
-                .map(diff -> diff.pow(2))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal varianceBD = varianceSum.divide(nBD, mc);
+        double lowerBound = mean - threshold;
+        double upperBound = mean + threshold;
 
-        double stdDev = Math.sqrt(varianceBD.doubleValue());
-        BigDecimal stdDevBD = BigDecimal.valueOf(stdDev);
-
-        BigDecimal factor = BigDecimal.valueOf(standardDeviations);
-        BigDecimal deviationRange = stdDevBD.multiply(factor);
-
-        BigDecimal lowerBound = meanBD.subtract(deviationRange);
-        BigDecimal upperBound = meanBD.add(deviationRange);
-
-        BigDecimal roundedLowerBound = lowerBound.setScale(2, RoundingMode.HALF_UP);
-        BigDecimal roundedUpperBound = upperBound.setScale(2, RoundingMode.HALF_UP);
-
-        return products.stream()
-                .filter(p -> p.price().compareTo(roundedLowerBound) < 0 ||
-                        p.price().compareTo(roundedUpperBound) > 0)
-                .collect(Collectors.toList());
+        List<Product> outliers = new ArrayList<>();
+        for (Product p : products) {
+            double price = p.price().doubleValue();
+            if (price < lowerBound || price > upperBound) {
+                outliers.add(p);
+            }
+        }
+        return outliers;
     }
     
     /**
