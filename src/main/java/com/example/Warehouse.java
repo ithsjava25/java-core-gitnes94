@@ -1,7 +1,6 @@
 package com.example;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -25,15 +24,28 @@ public class Warehouse {
         return INSTANCES.computeIfAbsent(name, Warehouse::new);
     }
 
+    public static Warehouse getInstance() {
+        return getInstance("DefaultWarehouse");
+    }
+
     public void clearProducts(){
         products.clear();
         changedProducts.clear();
+    }
+
+    public boolean isEmpty() {
+        return products.isEmpty();
     }
 
     public void addProduct(Product product){
         if (product == null) {
             throw new IllegalArgumentException("Product cannot be null.");
         }
+
+        if (products.containsKey(product.uuid())) {
+            throw new IllegalArgumentException("Product with that id already exists, use updateProduct for updates.");
+        }
+
         products.put(product.uuid(), product);
     }
 
@@ -50,18 +62,20 @@ public class Warehouse {
                 .orElseThrow(() -> new NoSuchElementException("Product not found with id: " + id));
 
         product.price(newPrice);
-
         changedProducts.add(product);
     }
 
-    public  Set<Product> getChangedProducts() {
-        return  Collections.unmodifiableSet(new HashSet<>(changedProducts));
+    public Set<Product> getChangedProducts() {
+        return Collections.unmodifiableSet(new HashSet<>(changedProducts));
+    }
+
+    public Map<Category, List<Product>> getProductsGroupedByCategories() {
+        return products.values().stream()
+                .collect(Collectors.groupingBy(Product::category));
     }
 
     public List<Perishable> expiredProducts(){
-        LocalDate today = LocalDate.now();
-
-        return  products.values().stream()
+        return products.values().stream()
                 .filter(p -> p instanceof Perishable)
                 .map(p -> (Perishable) p)
                 .filter(Perishable::isExpired)
@@ -82,5 +96,4 @@ public class Warehouse {
             changedProducts.remove(removed);
         }
     }
-
 }

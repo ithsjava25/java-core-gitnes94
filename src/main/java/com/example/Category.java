@@ -28,7 +28,7 @@ public class Category {
         return CACHE.computeIfAbsent(normalizedName, Category::new);
     }
 
-    public String name(){
+    public String getName(){
         return name;
     }
 
