@@ -148,21 +148,31 @@ class WarehouseAnalyzer {
     public List<Product> findPriceOutliers(double standardDeviations) {
         List<Product> products = warehouse.getProducts();
         int n = products.size();
-        if (n == 0) return List.of();
-        double sum = products.stream().map(Product::price).mapToDouble(bd -> bd.doubleValue()).sum();
-        double mean = sum / n;
+        if (n <= 1) return List.of();
+
+        BigDecimal sumBD = products.stream()
+                .map(Product::price)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal nBD = BigDecimal.valueOf(n);
+        BigDecimal meanBD = sumBD.divide(nBD, 10, RoundingMode.HALF_UP);
+        double mean = meanBD.doubleValue();
+
         double variance = products.stream()
                 .map(Product::price)
                 .mapToDouble(bd -> Math.pow(bd.doubleValue() - mean, 2))
                 .sum() / n;
+
         double std = Math.sqrt(variance);
         double threshold = standardDeviations * std;
-        List<Product> outliers = new ArrayList<>();
-        for (Product p : products) {
-            double diff = Math.abs(p.price().doubleValue() - mean);
-            if (diff > threshold) outliers.add(p);
-        }
-        return outliers;
+
+        BigDecimal thresholdBD = BigDecimal.valueOf(threshold);
+        BigDecimal lowerBound = meanBD.subtract(thresholdBD);
+        BigDecimal upperBound = meanBD.add(thresholdBD);
+
+        return products.stream()
+                .filter(p -> p.price().compareTo(lowerBound) < 0 || p.price().compareTo(upperBound) > 0)
+                .collect(Collectors.toList());
     }
     
     /**
