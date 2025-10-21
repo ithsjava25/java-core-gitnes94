@@ -150,25 +150,31 @@ class WarehouseAnalyzer {
         int n = products.size();
         if (n <= 1) return List.of();
 
+        MathContext mc = new MathContext(20, RoundingMode.HALF_UP);
+        BigDecimal nBD = BigDecimal.valueOf(n);
+
         BigDecimal sumBD = products.stream()
                 .map(Product::price)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal nBD = BigDecimal.valueOf(n);
-        BigDecimal meanBD = sumBD.divide(nBD, 10, RoundingMode.HALF_UP);
+        BigDecimal meanBD = sumBD.divide(nBD, mc);
         double mean = meanBD.doubleValue();
 
-        double variance = products.stream()
-                .map(Product::price)
-                .mapToDouble(bd -> Math.pow(bd.doubleValue() - mean, 2))
-                .sum() / n;
+        BigDecimal varianceSum = products.stream()
+                .map(p -> p.price().subtract(meanBD))
+                .map(diff -> diff.pow(2))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        double std = Math.sqrt(variance);
-        double threshold = standardDeviations * std;
+        BigDecimal varianceBD = varianceSum.divide(nBD, mc);
 
-        BigDecimal thresholdBD = BigDecimal.valueOf(threshold);
-        BigDecimal lowerBound = meanBD.subtract(thresholdBD);
-        BigDecimal upperBound = meanBD.add(thresholdBD);
+        double stdDev = Math.sqrt(varianceBD.doubleValue());
+        BigDecimal stdDevBD = BigDecimal.valueOf(stdDev);
+
+        BigDecimal factor = BigDecimal.valueOf(standardDeviations);
+        BigDecimal deviationRange = stdDevBD.multiply(factor);
+
+        BigDecimal lowerBound = meanBD.subtract(deviationRange);
+        BigDecimal upperBound = meanBD.add(deviationRange);
 
         return products.stream()
                 .filter(p -> p.price().compareTo(lowerBound) < 0 || p.price().compareTo(upperBound) > 0)
