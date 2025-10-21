@@ -11,7 +11,7 @@ public class FoodProduct extends Product implements Shippable, Perishable {
     private final BigDecimal weight;
 
     public FoodProduct(UUID id, String name, Category category, BigDecimal price, LocalDate expirationDate, BigDecimal weight){
-        super(id, name, category, price);
+        super(id, name, category, price.setScale(2, RoundingMode.HALF_UP));
 
         if (price.compareTo(BigDecimal.ZERO) < 0 ) {
             throw new IllegalArgumentException("Price cannot be negative.");
